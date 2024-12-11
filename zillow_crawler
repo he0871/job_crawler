@@ -1,3 +1,5 @@
+import copy
+
 import requests
 from bs4 import BeautifulSoup
 import re
@@ -26,40 +28,48 @@ def get_house_in_vienna():
             link_list.append(link.get('href'))
             #print(link.get('href'))
         # print(link.get('href'))
-    response = session.get(link_list[0], headers=headers)
-    soup = BeautifulSoup(response.text, 'html.parser')
-    texts_lines  = soup.find_all(class_=re.compile(r'^Text-c11n'))
 
-    interesting_data = {}
-    price_text = soup.find_all(class_=re.compile(r'^Text-c11n.*price-text'))
-    bed_bath_sqft = soup.find_all(class_=re.compile(r'^Text-c11n'), attrs={"data-testid": re.compile(r'^bed-bath-sqft-text')})
-    house_info = []
-    for item in bed_bath_sqft[:6]:
-        house_info.append(item.text)
-    address = soup.find_all('h1', class_=re.compile(r'^Text-c11n'))
-    address = address[0].text.replace('\xa0', '')
-    interesting_data['price'] = price_text[0].text
-    interesting_data['beds_baths'] = " ".join(house_info)
-    interesting_data['address'] = address
-    for line in texts_lines:
-        if "Built in" in line.text:
-            interesting_data["built_year"] = line.text
-        if "Acres" in line.text:
-            interesting_data["Acres"] = line.text
-
-    print(interesting_data)
-
-
-    """
-    #print(soup.find("streetAddress"))
-    jd_list = []
+    house_list = []
     for app_link in link_list:
+        print(app_link)
         response = session.get(app_link, headers=headers)
+        interesting_data = {}
         if response.status_code == 200:
             soup = BeautifulSoup(response.text, 'html.parser')
-            jd_list.append(soup.get_text())
-    return jd_list
-    """
+            texts_lines = soup.find_all(class_=re.compile(r'^Text-c11n'))
+            price_text = soup.find_all(class_=re.compile(r'^Text-c11n.*price-text'))
+            bed_bath_sqft = soup.find_all(class_=re.compile(r'^Text-c11n'),
+                                          attrs={"data-testid": re.compile(r'^bed-bath-sqft-text')})
+            house_info = []
+            for item in bed_bath_sqft[:6]:
+                house_info.append(item.text)
+            address = soup.find_all('h1', class_=re.compile(r'^Text-c11n'))
+            address = address[0].text.replace('\xa0', '')
+            if len(price_text) > 0:
+                interesting_data['price'] = price_text[0].text
+            else:
+                interesting_data['price'] = 'Unknown'
+            interesting_data['beds_baths'] = " ".join(house_info)
+            interesting_data['address'] = address
+            for line in texts_lines:
+                if "Built in" in line.text:
+                    interesting_data["built_year"] = line.text
+                if "Acres" in line.text:
+                    interesting_data["Acres"] = line.text
+            house_list.append(copy.deepcopy(interesting_data))
+            print(interesting_data)
+        else:
+            print(response.text)
+
+    filename = "/Users/mark/database/zillow/20241210.csv"
+    with open(filename, mode="w", newline="", encoding="utf-8") as file:
+        writer = csv.writer(file)
+        for house in house_list:
+            #print(list(house.values()))
+            writer.writerows(list(house.values()))
+
+    file.close()
+    return house_list
 
 if __name__ == "__main__":
     print(get_house_in_vienna())
