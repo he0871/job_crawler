@@ -36,7 +36,7 @@ def get_house_at(url, cities):
                         continue
                     if filter(line, session, headers):
                         with open("seen_house.txt", "a", encoding="utf-8") as file:
-                            file.write(f"\n{line}")
+                            file.write(f"{line}")
                         print(line)
         
         
